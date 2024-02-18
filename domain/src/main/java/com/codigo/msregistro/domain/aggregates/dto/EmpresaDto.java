@@ -9,7 +9,6 @@ import java.sql.Timestamp;
 @Setter
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class EmpresaDto {
-
     private Long idEmpresa;
     private String numDocu;
     private String razonSocial;

@@ -8,10 +8,12 @@ import com.codigo.msregistro.domain.ports.out.PersonaServiceOut;
 import com.codigo.msregistro.infraestructure.entity.PersonaEntity;
 import com.codigo.msregistro.infraestructure.entity.TipoDocumentoEntity;
 import com.codigo.msregistro.infraestructure.mapper.PersonaMapper;
+import com.codigo.msregistro.infraestructure.redis.RedisService;
 import com.codigo.msregistro.infraestructure.repository.PersonaRepository;
 import com.codigo.msregistro.infraestructure.repository.TipoDocumentoRepository;
 import com.codigo.msregistro.infraestructure.rest.client.ClienteReniec;
 
+import com.codigo.msregistro.infraestructure.util.Util;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +33,8 @@ public class PersonaAdapter implements PersonaServiceOut {
     private final TipoDocumentoRepository tipoDocumentoRepository;
     private final PersonaMapper personaMapper;
     private final ClienteReniec reniec;
+    private final RedisService redisService;
+    private final Util util;
 
     @Value("${token.api}")
     private String tokenApi;
@@ -45,7 +49,17 @@ public class PersonaAdapter implements PersonaServiceOut {
 
     @Override
     public Optional<PersonaDto> obtenerPersonaOut(Long id) {
-        return Optional.ofNullable(personaMapper.mapToDto(personaRepository.findById(id).get()));
+        String redisInfo = redisService.getFromRedis(Constants.REDIS_KEY_PERSONA + id);
+        if(redisInfo != null){
+            PersonaDto personaDto = util.convertFromJson(redisInfo, PersonaDto.class);
+            return Optional.of(personaDto);
+        }else{
+            PersonaDto dto = personaMapper.mapToDto(personaRepository.findById(id).get());
+            String redis = util.convertToJson(dto);
+            redisService.saveInRedis(Constants.REDIS_KEY_PERSONA+id, redis, 1);
+            return Optional.of(dto);
+        }
+        //return Optional.ofNullable(personaMapper.mapToDto(personaRepository.findById(id).get()));
     }
 
     @Override
